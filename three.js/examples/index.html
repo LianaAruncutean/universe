@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>three.js webgl - fly controls - earth</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<link type="text/css" rel="stylesheet" href="main.css">
+		<style>
+			body {
+				background:#000;
+				color: #eee;
+			}
+
+			a {
+				color: #0080ff;
+			}
+
+			b {
+				color: orange
+			}
+		</style>
+	</head>
+
+	<body>
+
+		<!--<div id="info"><a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> - earth [fly controls]<br/>-->
+		<b>WASD</b> move, <b>R|F</b> up | down, <b>Q|E</b> roll, <b>up|down</b> pitch, <b>left|right</b> yaw <br>
+		Press digit no. X for more info about planet Y: <b> 1</b> - Mercury, <b>2</b> - Venus, <b>3</b> - Earth, <b>4</b> - Mars, <b>5</b> - Jupiter, <b>6</b> - Saturn, <b>7</b> - Uranus, <b>8</b> - Neptune
+		</div>
+
+		<script src="https://unpkg.com/sweetalert/dist/sweetalert.min.js"></script>
+
+		<script type="module">
+
+			import * as THREE from '../build/three.module.js';
+
+			import { FlyControls } from './jsm/controls/FlyControls.js';
+			import { EffectComposer } from './jsm/postprocessing/EffectComposer.js';
+			import { RenderPass } from './jsm/postprocessing/RenderPass.js';
+			import { FilmPass } from './jsm/postprocessing/FilmPass.js';
+
+			const radius = 6371;			//sphere radius
+			const tilt = 0.41;
+			const rotationSpeed = 0.02;
+
+			const cloudsScale = 1.005;
+			const moonScale = 0.23;
+
+			const MARGIN = 0;
+			let SCREEN_HEIGHT = window.innerHeight - MARGIN * 2;
+			let SCREEN_WIDTH = window.innerWidth;
+
+			let camera, controls, scene, renderer;
+			let geometry, geometryMars, geometryVenus, geometryMercury, geometryJupiter, geometrySaturn, geometryUranus, geometryNeptune, geometrySun;
+			let meshPlanet, meshClouds, meshMoon, meshMars, meshVenus, meshMercury, meshJupiter, meshSaturn, meshUranus, meshNeptune, meshSun;
+			let dirLight;
+
+			let composer;
+			
+			const textureLoader = new THREE.TextureLoader();	//TextureLoader - class for loading a texture
+
+			let d, dPlanet, dMoon;
+			const dMoonVec = new THREE.Vector3();				//Vector 3 - class representing a 3D vector (ordered triplet of numbers - x, y, z)
+
+			const clock = new THREE.Clock();					//keeps the track of time
+
+			init();
+			animate();
+
+			function init() {
+
+				camera = new THREE.PerspectiveCamera( 25, SCREEN_WIDTH / SCREEN_HEIGHT, 50, 1e7 );		//projection mode used to mimic the way the human eye sees
+				camera.position.z = radius * 12;														//how much is the "image" zoomed in at the beginning														
+
+				scene = new THREE.Scene();
+				scene.fog = new THREE.FogExp2( 0x000000, 0.00000025 );			//creates a "fog" effect which is more dense with the distance
+
+				dirLight = new THREE.DirectionalLight( 0xffffff );				//used to simulate daylight
+				dirLight.position.set( - 1, 0, 1 ).normalize();					//the light shines from the front of the "image"
+				scene.add( dirLight );
+
+				//==== SUN ====
+
+				geometrySun = new THREE.SphereGeometry( radius * 109, 32, 32 );
+
+				const materialSun = new THREE.MeshPhongMaterial( {		//computes lighting at every pixel, useful for simulating shiny objects
+
+					specular: 0x333333,																	//defines how shiny the material is and the color of its shine
+					shininess: 15,																		//how shiny the .specular highlight is
+					map: textureLoader.load( "textures/planets/textureMapSun.jpg" ),					//the actual texture
+					bumpMap: textureLoader.load( "textures/planets/bumpMapMars.jpg" ),			//gives the "definition" of the texture (for mountains)
+					bumpSacele: 0.015
+
+				} );
+				
+				meshSun = new THREE.Mesh( geometrySun, materialSun );
+				meshSun.position.set( radius * 150, 0, 0 );
+				meshSun.rotation.y = 0;
+				meshSun.rotation.z = tilt;
+				scene.add( meshSun );
+
+
+				//==== MERCURY ====
+
+				geometryMercury = new THREE.SphereGeometry( radius * 0.38, 32, 32 );
+
+				const materialMercury = new THREE.MeshPhongMaterial( {		//computes lighting at every pixel, useful for simulating shiny objects
+
+					specular: 0x333333,																	//defines how shiny the material is and the color of its shine
+					shininess: 15,																		//how shiny the .specular highlight is
+					map: textureLoader.load( "textures/planets/textureMapMercury.jpg" ),					//the actual texture
+					bumpMap: textureLoader.load( "textures/planets/bumpMapMars.jpg" ),			//gives the "definition" of the texture (for mountains)
+					bumpSacele: 0.015
+
+				} );
+				
+				meshMercury = new THREE.Mesh( geometryMercury, materialMercury );
+				meshMercury.position.set( radius * 7, 0, 0 );
+				meshMercury.rotation.y = 0;
+				meshMercury.rotation.z = tilt;
+				scene.add( meshMercury );
+
+				//==== VENUS ====
+
+				geometryVenus = new THREE.SphereGeometry( radius * 0.94, 32, 32 );
+
+				const materialVenus = new THREE.MeshPhongMaterial( {		//computes lighting at every pixel, useful for simulating shiny objects
+
+					specular: 0x333333,																	//defines how shiny the material is and the color of its shine
+					shininess: 15,																		//how shiny the .specular highlight is
+					map: textureLoader.load( "textures/planets/textureMapVenus.jpg" ),					//the actual texture
+					bumpMap: textureLoader.load( "textures/planets/bumpMapMars.jpg" ),			//gives the "definition" of the texture (for mountains)
+					bumpSacele: 0.015
+
+				} );
+				
+				meshVenus = new THREE.Mesh( geometryVenus, materialVenus );
+				meshVenus.position.set( radius * 4, 0, 0 );
+				meshVenus.rotation.y = 0;
+				meshVenus.rotation.z = tilt;
+				scene.add( meshVenus );
+
+				//==== EARTH ====
+
+				const materialNormalMap = new THREE.MeshPhongMaterial( {		//computes lighting at every pixel, useful for simulating shiny objects
+
+					specular: 0x333333,																	//defines how shiny the material is and the color of its shine
+					shininess: 15,																		//how shiny the .specular highlight is
+					map: textureLoader.load( "textures/planets/earth_atmos_2048.jpg" ),					//the actual texture
+					specularMap: textureLoader.load( "textures/planets/earth_specular_2048.jpg" ),		//used for brightening the texture
+					normalMap: textureLoader.load( "textures/planets/earth_normal_2048.jpg" ),			//gives the "definition" of the texture (for mountains)
+
+				} );
+
+				geometry = new THREE.SphereGeometry( radius, 100, 50 );			//generates sphere geometries
+
+				meshPlanet = new THREE.Mesh( geometry, materialNormalMap );		//defines the Planet appearance
+				meshPlanet.rotation.y = 0;
+				meshPlanet.rotation.z = tilt;
+				scene.add( meshPlanet );
+
+				//==== MARS ====
+
+				geometryMars = new THREE.SphereGeometry( radius*0.53, 100, 50 );
+
+				const materialMars = new THREE.MeshPhongMaterial( {		//computes lighting at every pixel, useful for simulating shiny objects
+
+					specular: 0x333333,																	//defines how shiny the material is and the color of its shine
+					shininess: 15,																		//how shiny the .specular highlight is
+					map: textureLoader.load( "textures/planets/diffuseMapMars.jpg" ),					//the actual texture
+					bumpMap: textureLoader.load( "textures/planets/bumpMapMars.jpg" ),			//gives the "definition" of the texture (for mountains)
+					bumpSacele: 0.015
+
+				} );
+				
+				meshMars = new THREE.Mesh( geometryMars, materialMars );
+				meshMars.position.set( radius * -3, 0, 0 );
+				meshMars.rotation.y = 0;
+				meshMars.rotation.z = tilt;
+				scene.add( meshMars );
+
+				//==== JUPITER ====
+
+				geometryJupiter = new THREE.SphereGeometry( radius * 11.2, 32, 32 );
+
+				const materialJupiter = new THREE.MeshPhongMaterial( {		//computes lighting at every pixel, useful for simulating shiny objects
+
+				 	specular: 0x333333,																	//defines how shiny the material is and the color of its shine
+				 	shininess: 15,																		//how shiny the .specular highlight is
+				 	map: textureLoader.load( "textures/planets/textureMapJupiter.jpg" ),				//the actual texture
+				 	bumpMap: textureLoader.load( "textures/planets/bumpMapMars.jpg" ),			//gives the "definition" of the texture (for mountains)
+				 	bumpSacele: 0.015
+
+				} );
+				
+				meshJupiter = new THREE.Mesh( geometryJupiter, materialJupiter );
+				meshJupiter.position.set( radius * -15, 0, 0 );
+				meshMars.rotation.y = 0;
+				meshMars.rotation.z = tilt;
+				scene.add( meshJupiter );
+
+				//==== SATURN ====
+
+				geometrySaturn = new THREE.SphereGeometry( radius * 9.45, 32, 32 );
+
+				const materialSaturn = new THREE.MeshPhongMaterial( {		//computes lighting at every pixel, useful for simulating shiny objects
+
+				 	specular: 0x333333,																	//defines how shiny the material is and the color of its shine
+				 	shininess: 15,																		//how shiny the .specular highlight is
+				 	map: textureLoader.load( "textures/planets/textureMapSaturn.jpg" ),					//the actual texture
+				 	bumpMap: textureLoader.load( "textures/planets/bumpMapMars.jpg" ),			//gives the "definition" of the texture (for mountains)
+				 	bumpSacele: 0.015
+
+				} );
+				
+				meshSaturn = new THREE.Mesh( geometrySaturn, materialSaturn );
+				meshSaturn.position.set( radius * -40, 0, 0 );
+				meshSaturn.rotation.y = 0;
+				meshSaturn.rotation.z = tilt;
+				scene.add( meshSaturn );
+
+				//==== URANUS ====
+
+				geometryUranus = new THREE.SphereGeometry( radius * 4, 32, 32 );
+
+				const materialUranus = new THREE.MeshPhongMaterial( {		//computes lighting at every pixel, useful for simulating shiny objects
+
+				 	specular: 0x333333,																	//defines how shiny the material is and the color of its shine
+				 	shininess: 15,																		//how shiny the .specular highlight is
+				 	map: textureLoader.load( "textures/planets/textureMapUranus.jpg" ),					//the actual texture
+				 	bumpMap: textureLoader.load( "textures/planets/bumpMapMars.jpg" ),			//gives the "definition" of the texture (for mountains)
+				 	bumpSacele: 0.015
+
+				} );
+				
+				meshUranus = new THREE.Mesh( geometryUranus, materialUranus );
+				meshUranus.position.set( radius * -59, 0, 0 );
+				meshUranus.rotation.y = 0;
+				meshUranus.rotation.z = tilt;
+				scene.add( meshUranus );
+
+				//==== NEPTUNE ====
+
+				geometryNeptune = new THREE.SphereGeometry( radius * 3.91, 32, 32 );
+
+				const materialNeptune = new THREE.MeshPhongMaterial( {		//computes lighting at every pixel, useful for simulating shiny objects
+
+				 	specular: 0x333333,																	//defines how shiny the material is and the color of its shine
+				 	shininess: 15,																		//how shiny the .specular highlight is
+				 	map: textureLoader.load( "textures/planets/textureMapNeptune.jpg" ),				//the actual texture
+				 	bumpMap: textureLoader.load( "textures/planets/bumpMapMars.jpg" ),			//gives the "definition" of the texture (for mountains)
+				 	bumpSacele: 0.015
+
+				} );
+				
+				meshNeptune = new THREE.Mesh( geometryNeptune, materialNeptune );
+				meshNeptune.position.set( radius * -70, 0, 0 );
+				meshNeptune.rotation.y = 0;
+				meshNeptune.rotation.z = tilt;
+				scene.add( meshNeptune );
+				
+				// ==== CLOUDS ====
+
+				const materialClouds = new THREE.MeshLambertMaterial( {
+
+					map: textureLoader.load( "textures/planets/earth_clouds_1024.png" ),
+					transparent: true
+
+				} );
+
+				meshClouds = new THREE.Mesh( geometry, materialClouds );
+				meshClouds.scale.set( cloudsScale, cloudsScale, cloudsScale );
+				meshClouds.rotation.z = tilt;
+				scene.add( meshClouds );
+
+				// ==== MOON ====
+
+				const materialMoon = new THREE.MeshPhongMaterial( {
+
+					map: textureLoader.load( "textures/planets/moon_1024.jpg" )
+
+				} );
+
+				meshMoon = new THREE.Mesh( geometry, materialMoon );
+				meshMoon.position.set( radius * 1.5, radius * 1.7, 0 );
+				meshMoon.scale.set( moonScale, moonScale, moonScale );
+				scene.add( meshMoon );
+
+				// ==== STARS ====
+
+				const r = radius, starsGeometry = [ new THREE.BufferGeometry(), new THREE.BufferGeometry() ];
+
+				const vertices1 = [];
+				const vertices2 = [];
+
+				const vertex = new THREE.Vector3();
+
+				for ( let i = 0; i < 250; i ++ ) {
+
+					vertex.x = Math.random() * 2 - 1;
+					vertex.y = Math.random() * 2 - 1;
+					vertex.z = Math.random() * 2 - 1;
+					vertex.multiplyScalar( r );
+
+					vertices1.push( vertex.x, vertex.y, vertex.z );
+
+				}
+
+				for ( let i = 0; i < 1500; i ++ ) {
+
+					vertex.x = Math.random() * 2 - 1;
+					vertex.y = Math.random() * 2 - 1;
+					vertex.z = Math.random() * 2 - 1;
+					vertex.multiplyScalar( r );
+
+					vertices2.push( vertex.x, vertex.y, vertex.z );
+
+				}
+
+				starsGeometry[ 0 ].setAttribute( 'position', new THREE.Float32BufferAttribute( vertices1, 3 ) );
+				starsGeometry[ 1 ].setAttribute( 'position', new THREE.Float32BufferAttribute( vertices2, 3 ) );
+
+				const starsMaterials = [
+					new THREE.PointsMaterial( { color: 0x555555, size: 2, sizeAttenuation: false } ),
+					new THREE.PointsMaterial( { color: 0x555555, size: 1, sizeAttenuation: false } ),
+					new THREE.PointsMaterial( { color: 0x333333, size: 2, sizeAttenuation: false } ),
+					new THREE.PointsMaterial( { color: 0x3a3a3a, size: 1, sizeAttenuation: false } ),
+					new THREE.PointsMaterial( { color: 0x1a1a1a, size: 2, sizeAttenuation: false } ),
+					new THREE.PointsMaterial( { color: 0x1a1a1a, size: 1, sizeAttenuation: false } )
+				];
+
+				for ( let i = 10; i < 30; i ++ ) {
+
+					const stars = new THREE.Points( starsGeometry[ i % 2 ], starsMaterials[ i % 6 ] );
+
+					stars.rotation.x = Math.random() * 6;
+					stars.rotation.y = Math.random() * 6;
+					stars.rotation.z = Math.random() * 6;
+					stars.scale.setScalar( i * 10 );
+
+					stars.matrixAutoUpdate = false;
+					stars.updateMatrix();
+
+					scene.add( stars );
+
+				}
+
+				renderer = new THREE.WebGLRenderer( { antialias: true } );
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( SCREEN_WIDTH, SCREEN_HEIGHT );
+				document.body.appendChild( renderer.domElement );
+
+				//
+
+				controls = new FlyControls( camera, renderer.domElement );
+
+				controls.movementSpeed = 1000;
+				controls.domElement = renderer.domElement;
+				controls.rollSpeed = Math.PI / 24;
+				controls.autoForward = false;
+				controls.dragToLook = false;
+
+				//
+
+				window.addEventListener( 'resize', onWindowResize );
+
+				// postprocessing
+
+				const renderModel = new RenderPass( scene, camera );
+				const effectFilm = new FilmPass( 0.35, 0.75, 2048, false );
+
+				composer = new EffectComposer( renderer );
+
+				composer.addPass( renderModel );
+				composer.addPass( effectFilm );
+
+			}
+
+			function onWindowResize() {
+
+				SCREEN_HEIGHT = window.innerHeight;
+				SCREEN_WIDTH = window.innerWidth;
+
+				camera.aspect = SCREEN_WIDTH / SCREEN_HEIGHT;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( SCREEN_WIDTH, SCREEN_HEIGHT );
+				composer.setSize( SCREEN_WIDTH, SCREEN_HEIGHT );
+
+			}
+
+			function animate() {
+
+				requestAnimationFrame( animate );
+
+				render();
+
+			}
+
+			function render() {
+
+				// rotate the planet and clouds
+
+				const delta = clock.getDelta();							
+
+				meshPlanet.rotation.y += rotationSpeed * delta;
+				meshMars.rotation.y += rotationSpeed * delta;
+				meshVenus.rotation.y += rotationSpeed * delta;
+				meshMercury.rotation.y += rotationSpeed * delta;
+				meshJupiter.rotation.y += rotationSpeed * delta;
+				meshSaturn.rotation.y += rotationSpeed * delta * 2;
+				meshUranus.rotation.y += rotationSpeed * delta * 2;
+				meshNeptune.rotation.y += rotationSpeed * delta * 2;
+				meshMoon.rotation.y += rotationSpeed * delta;
+				meshSun.rotation.y += rotationSpeed * delta;
+				meshClouds.rotation.y += 1.25 * rotationSpeed * delta;
+
+				// slow down as we approach the surface
+
+				dPlanet = camera.position.length();
+
+				dMoonVec.subVectors( camera.position, meshMoon.position );
+				dMoon = dMoonVec.length();
+
+				if ( dMoon < dPlanet ) {
+
+					d = ( dMoon - radius * moonScale * 1.01 );
+
+				} else {
+
+					d = ( dPlanet - radius * 1.01 );
+
+				}
+
+				controls.movementSpeed = 0.33 * d;
+				controls.update( delta );
+
+				composer.render( delta );
+
+			}
+
+			function checkPhoneKey(key) {
+			return (key >= '0' && key <= '9') || key == '+' || key == '(' || key == ')' || key == '-';
+			}
+
+		</script>
+	</body>
+</html>
